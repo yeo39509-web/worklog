@@ -11,7 +11,7 @@
 <div class="datebar"><button id="prev">‹</button><input id="datePick" type="date"><div class="date-label" id="dateLabel"></div><button id="next">›</button></div><div class="quickbar"><input id="quickTitle" placeholder="업무를 입력하세요... (Enter)" autocomplete="off"><button id="quickAdd">등록</button></div></header>
 <main id="main">
 <div class="tabs"><button class="tab active" data-filter="all">전체 <span class="tab-count">0</span></button><button class="tab" data-filter="todo">예정 <span class="tab-count">0</span></button><button class="tab" data-filter="progress">진행 중 <span class="tab-count">0</span></button><button class="tab" data-filter="done">완료 <span class="tab-count">0</span></button></div>
-<div class="calendar-head"><button id="calPrev">‹</button><strong id="calTitle"></strong><div style="display:flex;gap:5px"><button id="calToday">오늘</button><button id="calNext">›</button></div></div><div class="month-cal"><div class="cal-weekdays"><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div><div>일</div></div><div class="cal-grid" id="calendar"></div></div><div class="section-title" id="daySectionTitle">선택일 업무</div><div class="list" id="list"></div></main>
+<div class="calendar-head"><button id="calPrev">‹</button><strong id="calTitle"></strong><div style="display:flex;gap:5px"><button id="calToday">오늘</button><button id="calNext">›</button></div></div><div class="month-cal"><div class="cal-weekdays"><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div><div>일</div></div><div class="cal-grid" id="calendar"></div></div><div class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span id="daySectionTitle">선택일 업무</span><button id="dailyCsvBtn" style="border:1px solid #dfe4eb;background:#fff;border-radius:9px;padding:6px 10px;font-size:12px;font-weight:700">엑셀 저장</button></div><div class="list" id="list"></div></main>
 <section class="report" id="report"><div class="report-head"><div><h2>주간업무보고</h2><div class="report-period" id="reportPeriod"></div></div></div>
 <div class="report-actions"><button id="prevWeekBtn">‹ 이전 주</button><button id="thisWeekBtn">이번 주</button><button id="nextWeekBtn">다음 주 ›</button><button class="primary" id="csvBtn">엑셀 저장</button><button id="printBtn">인쇄</button></div>
 <div class="setting-note">※ 회사 주간업무보고 형식에 맞춰 <b>대분류 / 담당업무 / 금주실적 / 차주계획</b>으로 정리합니다. 일일업무에서 입력한 내용이 자동으로 반영됩니다.</div>
@@ -85,7 +85,14 @@ document.querySelectorAll('.bottom button').forEach(b=>b.onclick=()=>{page=b.dat
 $('prevWeekBtn').onclick=()=>{selected=new Date(weekStart(selected));selected.setDate(selected.getDate()-7);render();renderReport()};
 $('nextWeekBtn').onclick=()=>{selected=new Date(weekStart(selected));selected.setDate(selected.getDate()+7);render();renderReport()};
 $('thisWeekBtn').onclick=()=>{selected=new Date();render();renderReport()};
-function csvEscape(v){return `"${String(v??'').replace(/"/g,'""')}"`}
+function csvEscape(v){return `\"${String(v??'').replace(/\"/g,'\"\"')}\"`}
+$('dailyCsvBtn').onclick=()=>{
+ let day=iso(selected);
+ let a=items.filter(x=>x.date===day).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+ let rows=[['업무일자','대분류','진행상태','담당업무','주요내용 / 실시내용','결과 / 조치사항','차주계획','비고'],...a.map(x=>[x.date,x.category,statusName(x.status),x.title,x.detail||'',x.result||'',x.nextPlan||'',x.memo||''])];
+ let csv='\uFEFF'+rows.map(r=>r.map(csvEscape).join(',')).join('\n');
+ let url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),aEl=document.createElement('a');aEl.href=url;aEl.download=`일일업무_${day}.csv`;aEl.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
 $('csvBtn').onclick=()=>{
  let s=weekStart(selected),e=new Date(s);e.setDate(e.getDate()+6);
  let a=items.filter(x=>x.date>=iso(s)&&x.date<=iso(e)).sort((a,b)=>a.category.localeCompare(b.category,'ko')||a.date.localeCompare(b.date)||(a.createdAt||0)-(b.createdAt||0));
