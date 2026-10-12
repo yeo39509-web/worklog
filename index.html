@@ -93,8 +93,9 @@ function copyRowStyle(ws,from,to){const a=ws.getRow(from),b=ws.getRow(to);b.heig
 function dateVal(v){return v?new Date(v+'T00:00:00'):null}
 async function downloadWorkbook(wb,name){const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
 function removeVisibleBlankRows(ws,lastRow,lastCol){
- // Excel 기본 격자선을 끄고, 내용 아래의 기존 서식 행을 숨겨 빈 줄이 보이지 않게 처리
+ // 실제 내용이 있는 행은 숨김 해제하고, 그 아래 빈 행은 숨김 및 테두리 제거
  ws.views=[{state:'normal',showGridLines:false}];
+ for(let r=1;r<=lastRow;r++) ws.getRow(r).hidden=false;
  const limit=Math.max(ws.rowCount||0,100);
  for(let r=lastRow+1;r<=limit;r++){
    const row=ws.getRow(r); row.hidden=true;
@@ -129,8 +130,10 @@ for(const m of [...(ws.model.merges||[])]){const n=parseInt((m.match(/\d+/)||['0
 for(let r=8;r<=40;r++)clearRow(ws,r);
 const groups=[];a.forEach(x=>{let g=groups.find(g=>g.cat===x.category);if(!g){g={cat:x.category,rows:[]};groups.push(g)}g.rows.push(x)});
 const total=Math.max(1,a.length),endRow=7+total;
-for(let r=8;r<=endRow;r++){ws.getRow(r).height=16.75;for(const c of ['B','C','D','E','F','G','H','I'])ws.getCell(`${c}${r}`).style=JSON.parse(JSON.stringify(templateStyles[c]));}
+for(let r=8;r<=endRow;r++){const row=ws.getRow(r);row.hidden=false;row.height=16.75;for(const c of ['B','C','D','E','F','G','H','I'])ws.getCell(`${c}${r}`).style=JSON.parse(JSON.stringify(templateStyles[c]));}
 let idx=0;groups.forEach(g=>{const first=8+idx,last=first+g.rows.length-1;if(last>first)ws.mergeCells(`B${first}:B${last}`);setCellValue(ws,`B${first}`,g.cat);ws.getCell(`B${first}`).alignment={...ws.getCell(`B${first}`).alignment,horizontal:'center',vertical:'middle',wrapText:true};g.rows.forEach((x,j)=>{const r=first+j;setCellValue(ws,`C${r}`,'');setCellValue(ws,`D${r}`,'여상구D');setCellValue(ws,`E${r}`,dateVal(x.date));ws.getCell(`E${r}`).numFmt='m"월"d"일"';setCellValue(ws,`F${r}`,x.title);setCellValue(ws,`G${r}`,x.status==='done'?`~${new Date(x.date+'T00:00:00').getMonth()+1}월${new Date(x.date+'T00:00:00').getDate()}일`:'');setCellValue(ws,`H${r}`,x.detail||'');setCellValue(ws,`I${r}`,x.memo||'');for(const c of ['B','C','D','E','F','G','H','I']){const cell=ws.getCell(`${c}${r}`);cell.alignment={...cell.alignment,vertical:'middle',wrapText:['C','F','H'].includes(c)};}const titleLines=Math.max(1,String(x.title||'').split('\n').length);const detailLines=Math.max(1,String(x.detail||'').split('\n').length);ws.getRow(r).height=16.75;});idx+=g.rows.length});const month=s.getMonth()+1,week=Math.floor((s.getDate()-1)/7)+1;setCellValue(ws,'C3',`${month}월 ${week}주차`);setCellValue(ws,'E3',`${month}월${s.getDate()}일`);
+// 템플릿에 남아 있던 숨김 상태를 초기화하고, 내용이 있는 행만 표시
+for(let r=1;r<=endRow;r++)ws.getRow(r).hidden=false;
 ws.pageSetup.printArea=`B1:I${endRow}`;removeVisibleBlankRows(ws,endRow,9);ws.pageSetup.fitToPage=true;ws.pageSetup.fitToWidth=1;ws.pageSetup.fitToHeight=0;await downloadWorkbook(wb,`주간업무보고_${start}_${end}_생산기술팀.xlsx`)}catch(e){console.error(e);alert('주간업무 회사 양식 엑셀 생성 오류\n'+e.message)}}
 $('dailyCsvBtn').onclick=exportDailyCompany;$('csvBtn').onclick=exportWeeklyCompany;
 $('printBtn').onclick=()=>window.print();render();
